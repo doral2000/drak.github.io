@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إذاعة دارك FM - صانع الأخبار العاجلة</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+        }
+        /* مقاس 4:5 (مثلاً 1080x1350) */
+        #news-canvas {
+            width: 400px;
+            height: 500px;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #4b5563, #1f2937); /* خلفية رمادية متدرجة واحترافية */
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            flex-shrink: 0;
+        }
+        .gradient-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 70%;
+            background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 50%, transparent 100%);
+            z-index: 1;
+        }
+        .urgent-tag {
+            background: #e11d48;
+            color: white;
+            padding: 5px 20px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: inline-block;
+            clip-path: polygon(0 0, 90% 0, 100% 100%, 10% 100%);
+        }
+        #bg-preview {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+        }
+        .content-area {
+            position: absolute;
+            left: 20px;
+            right: 20px;
+            z-index: 2;
+            transition: all 0.3s ease;
+        }
+        /* وضع الصورة: النص بالأسفل بدون مربع */
+        .content-image-mode {
+            bottom: 40px;
+            top: auto;
+            transform: none;
+            background: transparent;
+            padding: 0;
+            border: none;
+        }
+        /* وضع النص فقط: النص بالمنتصف داخل مربع إخباري مميز */
+        .content-text-mode {
+            top: 50%;
+            bottom: auto;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-right: 4px solid #dc2626;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .logo-area {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 2;
+            text-align: right;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        
+        <!-- قسم المعاينة (Canvas) -->
+        <div class="flex justify-center order-2 lg:order-1">
+            <div id="news-canvas" class="border-4 border-gray-800 rounded-lg">
+                <!-- صورة الخلفية (مخفية افتراضياً لترك الخلفية رمادية) -->
+                <img id="bg-preview" src="" alt="خلفية" style="display: none;">
+                
+                <div id="gradient-overlay" class="gradient-overlay" style="display: none;"></div>
+
+                <!-- الشعار والتردد (مربع مصغر وبدون أيقونة) -->
+                <div class="logo-area">
+                    <div class="bg-gradient-to-r from-black/90 to-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg border border-gray-600 inline-block shadow-lg">
+                        <div class="flex flex-col text-right">
+                            <h1 class="text-xl font-black text-white tracking-wider" style="text-shadow: 0 2px 4px rgba(0,0,0,0.8);">إذاعة دارك</h1>
+                            <p class="text-[10px] text-red-500 font-black tracking-[0.2em] uppercase">94.3 FM</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- محتوى الخبر (يبدأ في وضع النص بالمنتصف) -->
+                <div id="content-container" class="content-area content-text-mode">
+                    <div class="urgent-tag mb-3 text-lg">خبر عاجل</div>
+                    <div id="display-title" class="text-red-500 font-bold text-sm mb-1">الآن مباشرة</div>
+                    <div id="display-text" class="font-bold leading-tight text-white mb-4" style="font-size: 24px;">
+                        اكتب تفاصيل الخبر العاجل هنا ليظهر بشكل احترافي على شاشة إذاعة دارك
+                    </div>
+                    <div class="h-1 w-20 bg-red-600 mb-2"></div>
+                    <div id="display-date" class="text-gray-300 text-sm font-bold tracking-wide"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- قسم التحكم (Controls) -->
+        <div class="bg-gray-900 p-6 rounded-2xl shadow-xl space-y-6 order-1 lg:order-2 border border-gray-800">
+            <h2 class="text-2xl font-bold border-b border-gray-800 pb-4 text-red-500">لوحة التحكم</h2>
+            
+            <!-- رفع الصورة -->
+            <div>
+                <label class="block text-sm font-medium mb-2">تغيير صورة الخلفية</label>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <input type="file" id="image-input" accept="image/*" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700 cursor-pointer">
+                    <button id="remove-image-btn" class="bg-gray-700 hover:bg-gray-600 text-white text-sm font-bold py-2 px-6 rounded-full transition-all whitespace-nowrap">
+                        بدون صورة
+                    </button>
+                </div>
+            </div>
+
+            <!-- نص الخبر -->
+            <div>
+                <label class="block text-sm font-medium mb-2">نص الخبر</label>
+                <textarea id="text-input" rows="3" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 focus:ring-2 focus:ring-red-600 outline-none transition-all" placeholder="أدخل تفاصيل الخبر هنا..."></textarea>
+            </div>
+
+            <!-- حجم الخط -->
+            <div>
+                <div class="flex justify-between mb-2 text-sm">
+                    <label>حجم الخط</label>
+                    <span id="font-size-val">24px</span>
+                </div>
+                <input type="range" id="font-size-slider" min="16" max="40" value="24" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-600">
+            </div>
+
+            <div class="grid grid-cols-1 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">العنوان العلوي</label>
+                    <input type="text" id="title-input" value="الآن مباشرة" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 focus:ring-2 focus:ring-red-600 outline-none">
+                </div>
+            </div>
+
+            <!-- أزرار العمليات -->
+            <button id="download-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                حفظ الصورة في الاستوديو
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        const textInput = document.getElementById('text-input');
+        const titleInput = document.getElementById('title-input');
+        const imageInput = document.getElementById('image-input');
+        const removeImageBtn = document.getElementById('remove-image-btn');
+        const fontSizeSlider = document.getElementById('font-size-slider');
+        
+        const displayText = document.getElementById('display-text');
+        const displayTitle = document.getElementById('display-title');
+        const displayDate = document.getElementById('display-date');
+        const bgPreview = document.getElementById('bg-preview');
+        const gradientOverlay = document.getElementById('gradient-overlay');
+        const contentContainer = document.getElementById('content-container');
+        const fontSizeVal = document.getElementById('font-size-val');
+        const downloadBtn = document.getElementById('download-btn');
+
+        // تعيين تاريخ اليوم تلقائياً بصيغة عربية احترافية
+        const today = new Date();
+        const options = { day: 'numeric', month: 'long', year: 'numeric' };
+        displayDate.innerText = today.toLocaleDateString('ar-EG', options);
+
+        // تحديث النص في المعاينة
+        textInput.addEventListener('input', (e) => {
+            displayText.innerText = e.target.value || 'اكتب تفاصيل الخبر العاجل هنا...';
+        });
+
+        titleInput.addEventListener('input', (e) => {
+            displayTitle.innerText = e.target.value;
+        });
+
+        // تحديث حجم الخط
+        fontSizeSlider.addEventListener('input', (e) => {
+            const size = e.target.value + 'px';
+            displayText.style.fontSize = size;
+            fontSizeVal.innerText = size;
+        });
+
+        // رفع الصورة
+        imageInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    bgPreview.src = e.target.result;
+                    bgPreview.style.display = 'block'; // إظهار الصورة
+                    gradientOverlay.style.display = 'block'; // إظهار التدرج اللوني
+                    
+                    // تغيير التصميم ليناسب وضع الصورة (إلغاء المربع والنقل للأسفل)
+                    contentContainer.classList.remove('content-text-mode');
+                    contentContainer.classList.add('content-image-mode');
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // إزالة الصورة للرجوع للخلفية الرمادية
+        removeImageBtn.addEventListener('click', () => {
+            bgPreview.src = '';
+            bgPreview.style.display = 'none'; // إخفاء الصورة
+            imageInput.value = ''; // تفريغ حقل الرفع
+            gradientOverlay.style.display = 'none'; // إخفاء التدرج اللوني
+            
+            // استعادة المربع الإخباري والنقل للمنتصف
+            contentContainer.classList.remove('content-image-mode');
+            contentContainer.classList.add('content-text-mode');
+        });
+
+        // ميزة الحفظ كصورة
+        downloadBtn.addEventListener('click', () => {
+            const canvasContainer = document.getElementById('news-canvas');
+            
+            // إضافة مؤشر تحميل بسيط
+            downloadBtn.innerText = 'جاري التحميل...';
+            downloadBtn.disabled = true;
+
+            html2canvas(canvasContainer, {
+                useCORS: true,
+                scale: 3, // دقة عالية للحفظ
+                backgroundColor: null
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `DarkFM_News_${Date.now()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+                downloadBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    حفظ الصورة في الاستوديو
+                `;
+                downloadBtn.disabled = false;
+            }).catch(err => {
+                console.error('Error generating image:', err);
+                downloadBtn.innerText = 'فشل الحفظ، حاول مرة أخرى';
+                downloadBtn.disabled = false;
+            });
+        });
+    </script>
+</body>
+</html>
